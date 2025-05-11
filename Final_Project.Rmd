@@ -1,0 +1,353 @@
+---
+title: "MATH 322: Applied Linear Regression - Final Project"
+author: "Group Members: Jack Brown, Keegan Croft, Patrick Hayden, William Westerkamp"
+date: "May 11, 2025"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+# 1. Objective
+
+## Research Questions
+
+As stated in our existing project report:
+
+The primary objective of this project is to conduct a multiple linear regression analysis on residential housing data from Ames, Iowa, to identify the most significant predictors of home sale prices. We will develop a statistically sound model for predicting sale prices and gain insight into economic and structural factors determining home valuation in the Midwest U.S. housing market. Our analysis has been guided by two research questions:
+
+1. **What are the most important factors that influence the sale price of a home in Ames?**
+   - In this part of the study, we identify the strongest predictors among a selection of numerical, ordinal, and categorical variables, such as living area, neighborhood, overall quality, and kitchen quality. By estimating the effect size and statistical significance of each predictor, we aim to construct a parsimonious model that evenly balances interpretability and predictive power.
+
+2. **Does the effect of living area on sale price vary depending on the perceived quality of the home?**
+   - Here, we explore the interaction effect between living area (Gr_Liv_Area) and overall quality (Overall_Qual). This will allow us to determine whether additional square footage adds more value in higher-quality homes compared to lower-quality ones. The question we posed allows us to test whether the marginal effect of one variable depends on another.
+
+## Modeling Objectives
+
+Our modeling objectives include both prediction and inference. From a predictive standpoint, we are interested in building a model that could be used by homeowners, real estate agents, or appraisers to estimate fair market value based on property characteristics. From an inferential perspective, we are interested in understanding which variables have statistically significant relationships with sale price, how strong those relations are, and how they interact with each other.
+
+To answer these questions, we will use multiple linear regression in R. Our approach includes data exploration, variable selection through forward and backward stepwise procedures, evaluation of regression assumptions (linearity, homoscedasticity, and normality), and inference using hypothesis tests and confidence intervals. The results of this analysis will not only answer our research questions but also provide an understanding of housing data through the lens of applied regression modeling.
+
+# 2. Introduction
+
+## Dataset Overview
+
+The dataset contains observations on the pricing of homes in the town of Ames, Iowa. 'SalePrice' is the response variable, meaning, it is the variable we are trying to predict.
+
+```{r load_data}
+# Read the dataset
+ames <- read.csv("data/AmesHousing.csv", header = TRUE)
+
+# Read the cleaned dataset if it exists
+if(file.exists("data/ames_clean.csv")) {
+  ames_subset <- read.csv("data/ames_clean.csv")
+  # Ensure categorical variables are treated as factors
+  ames_subset$Neighborhood <- as.factor(ames_subset$Neighborhood)
+  ames_subset$Kitchen.Qual <- as.factor(ames_subset$Kitchen.Qual)
+} else {
+  # Create the subset if the clean file doesn't exist
+  ames_subset <- na.omit(ames[, c("SalePrice", "Gr.Liv.Area", "Overall.Qual", "Year.Built",
+                                  "Garage.Cars", "Total.Bsmt.SF", "Neighborhood", "Kitchen.Qual")])
+  ames_subset$Neighborhood <- as.factor(ames_subset$Neighborhood)
+  ames_subset$Kitchen.Qual <- as.factor(ames_subset$Kitchen.Qual)
+  ames_subset$LogSalePrice <- log(ames_subset$SalePrice)
+}
+```
+
+## Variables Used
+
+As noted in our project development, there are many variables used in this project. We planned on using SalePrice, GrLivArea, OverallQual, YearBuilt, GarageCars, TotalBsmtSF, Neighborhood, FullBath, and LotArea. However, as we progressed through our analysis, we identified which variables were most important and which were not as influential as initially expected.
+
+## Descriptive Statistics
+
+To better understand the distribution of our key variables, we examined summary statistics and frequency tables for both numerical and categorical predictors used in the analysis.
+
+```{r summary_stats}
+# Display summary statistics for key variables
+summary(ames[, c("SalePrice", "Gr.Liv.Area", "Overall.Qual", "Year.Built")])
+```
+
+These statistics reveal a right-skewed distribution for sale price and living area, with many homes built post-1950 and the average quality rating slightly above the mid-point of the 1–10 scale.
+
+```{r categorical_vars}
+# Display frequency tables for key categorical variables
+table(ames$House.Style)
+table(ames$Kitchen.Qual)
+```
+
+The most common house style in the dataset is 1Story, followed by 2Story and 1.5Fin. Most homes have kitchens rated as typical (TA) or good (Gd). Very few homes fall into the lowest (Po) or highest quality (Ex) categories.
+
+## Visualizations
+
+### Distribution of Sale Price
+
+```{r saleprice_hist, fig.cap="Histogram of Sale Price", fig.width=8, fig.height=5}
+# Histogram of SalePrice
+options(scipen = 999)  # For x-axis price readability
+hist(ames$SalePrice,
+     main = "Histogram of Sale Price",
+     xlab = "Sale Price (USD)",
+     col = "skyblue",
+     breaks = 50)
+```
+
+The sale price distribution is clearly right-skewed, with most homes concentrated in the lower price ranges and a long tail extending to the higher-priced properties.
+
+```{r log_saleprice, fig.cap="Histogram of Log-transformed Sale Price", fig.width=8, fig.height=5}
+# Histogram of Log Sale Price
+hist(log(ames$SalePrice),
+     main = "Histogram of Log(Sale Price)",
+     xlab = "Log(Sale Price)",
+     col = "lightgreen",
+     breaks = 50)
+```
+
+The log transformation effectively normalizes the distribution, making it more symmetric and suitable for linear regression analysis.
+
+### Relationship Between Variables
+
+```{r kitchen_qual_boxplot, fig.cap="Sale Price by Kitchen Quality", fig.width=8, fig.height=5}
+# Boxplot of SalePrice by Kitchen.Qual
+boxplot(SalePrice ~ Kitchen.Qual,
+        data = ames,
+        main = "Sale Price by Kitchen Quality",
+        xlab = "Kitchen Quality",
+        ylab = "Sale Price (USD)",
+        col = "lightpink")
+```
+
+From the boxplot, we can see that kitchen quality has a substantial impact on home prices, with higher-quality kitchens associated with significantly higher sale prices.
+
+```{r scatter_area_quality, fig.cap="Sale Price vs. Living Area Colored by Overall Quality", fig.width=8, fig.height=5}
+# Scatterplot of Gr.Liv.Area vs. SalePrice, Colored by Overall.Qual
+plot(ames$Gr.Liv.Area, ames$SalePrice,
+     col = as.factor(ames$Overall.Qual),
+     pch = 19,
+     xlab = "Above Ground Living Area (sq ft)",
+     ylab = "Sale Price (USD)",
+     main = "Sale Price vs. Living Area Colored by Overall Quality")
+
+legend("topleft", 
+       legend = levels(as.factor(ames$Overall.Qual)),
+       col = 1:length(levels(as.factor(ames$Overall.Qual))), 
+       pch = 19, 
+       title = "Overall Quality",
+       cex = 0.8)
+```
+
+The scatterplot reveals a positive relationship between living area and sale price, with the points colored by overall quality showing that higher-quality homes tend to be more expensive at any given size.
+
+# 3. Methodology and Analysis
+
+## Initial Model Building
+
+To answer the question of what are the most important factors that influence the sale price of a home in Ames, we built a multiple linear regression model. We built this initial model using a curated subset of the Ames Housing dataset. The goal was to see what factors influenced the sale price of the home the most.
+
+The sale price was log-transformed because the sale prices are very heavily right-skewed. This is because a small number of expensive homes pull the distribution to the right. The log transformation combats that by making the distribution more symmetric. We fit the model in R using the lm() function. The model included both numerical predictors and categorical predictors.
+
+```{r model_building, echo=TRUE}
+# Create the model (if it doesn't already exist)
+if(!exists("final_model_rq1") && file.exists("data/final_model_rq1.rds")) {
+  final_model_rq1 <- readRDS("data/final_model_rq1.rds")
+} else {
+  # Build the model if it doesn't exist
+  model <- lm(LogSalePrice ~ Gr.Liv.Area + Overall.Qual + Year.Built +
+                Garage.Cars + Total.Bsmt.SF + Neighborhood + Kitchen.Qual,
+              data = ames_subset)
+  final_model_rq1 <- model
+}
+
+# Model summary
+summary(final_model_rq1)
+```
+
+## Model Diagnostics
+
+```{r diagnostics, fig.height=7, fig.width=9}
+# Diagnostic plots
+par(mfrow = c(2, 2))
+plot(final_model_rq1)
+par(mfrow = c(1, 1))
+```
+
+The top left plot shows a mostly flat red line which is good. The top right shows that the residuals are mostly normally distributed. The bottom left plot also shows a relatively flat red line which is good. The bottom right shows a few points with high leverage but nothing out of the ordinary.
+
+For the results, we have an adjusted R-squared of 0.852. This means that our model explains around 85% of the variance in log sale prices. All the continuous predictors were very significant. Gr.Liv.Area (t=27.8), Overall.Qual (t=23.8). So yes, the neighborhood and year built features mattered a lot, but the interior quality seems to be of utmost importance.
+
+The most powerful predictor is by far Gr.Liv.Area, which is the square footage of the living area. Following that is overall quality, and then garage capacity. All in all, the model has excellent fit which we can see with the 0.85 R-squared.
+
+## Interaction Model for Research Question 2
+
+For our second research question, we were looking to see if the effect of living area on sale price varies depending on the perceived quality of the home. To take a look at this, a model using only Gr.Liv.Area and Overall.Qual in relation to SalePrice was created which allowed us to see the interaction between the variables.
+
+```{r interaction_model, echo=TRUE}
+# Create the interaction model (if it doesn't already exist)
+if(!exists("interaction_model") && file.exists("data/final_model_rq2.rds")) {
+  interaction_model <- readRDS("data/final_model_rq2.rds")
+} else {
+  # Build the interaction model if it doesn't exist
+  interaction_model <- lm(log(SalePrice) ~ Gr.Liv.Area * Overall.Qual, 
+                          data = ames_subset)
+}
+
+# Model summary
+summary(interaction_model)
+
+# Compare with model without interaction
+no_interaction_model <- lm(log(SalePrice) ~ Gr.Liv.Area + Overall.Qual, 
+                          data = ames_subset)
+anova(no_interaction_model, interaction_model)
+```
+
+The summary output from the interaction model has an adjusted R^2 value of 0.7594 which shows that our model is a decent fit for around 75% of the data. 
+
+A hypothesis test was performed to see if the interaction between Overall.Qual and Gr.Liv.Area was zero, and the conclusion found from it was that there was significant evidence to reject the null hypothesis and that the interaction between the variables is significant to the model. This was determined because the p-value from the ANOVA test was very small, allowing us to be confident to at least 5% that the interaction is significant.
+
+**Hypothesis test:**  
+H₀: β₃ = 0 vs. H₁: β₃ ≠ 0  
+F = 36.575  
+p-value ≈ 0  
+Decision: p-value < 0.05. We reject the null hypothesis at a 5% level of significance.  
+Conclusion: We have significant evidence that the interaction is significant to the model.
+
+All of this allows us to conclude that the combination of the overall quality of a house and how much square footage is available has a significant effect on the overall sale price of the house.
+
+```{r cooks_distance, fig.cap="Cook's Distance Plot for Research Question 2 Model", fig.width=8, fig.height=6}
+# Generate Cook's distance plot if not already included in the report
+if(!exists("rq2.model2")) {
+  rq2.model2 <- lm(log(SalePrice) ~ Gr.Liv.Area * Overall.Qual, data = ames_subset)
+}
+di <- cooks.distance(rq2.model2)
+n <- nrow(ames_subset)
+p <- 4
+CV2 <- qf(0.5, p, n-p)
+
+plot(di, main = "Cook's Distance of Research Question 2",
+     ylab = "Cook's Distance", xlab = "Observation Number")
+abline(h = CV2, col = "red")
+```
+
+This model is a better representation of what Cook's distance should be and helps identify outliers that might be affecting the data.
+
+## Practical Interpretation of Effects
+
+```{r interpretable_effects}
+# Convert coefficients to percentage effects for easier interpretation
+cat("Interpretable effects (percentage change in price):\n\n")
+
+# Gr.Liv.Area
+if("Gr.Liv.Area" %in% names(coef(final_model_rq1))) {
+  coef_val <- coef(final_model_rq1)["Gr.Liv.Area"]
+  effect <- (exp(coef_val * 100) - 1) * 100
+  cat("- 100 sq ft increase in living area: ", round(effect, 2), "% increase in price\n", sep="")
+}
+
+# Overall.Qual
+if("Overall.Qual" %in% names(coef(final_model_rq1))) {
+  coef_val <- coef(final_model_rq1)["Overall.Qual"]
+  effect <- (exp(coef_val) - 1) * 100
+  cat("- 1 point increase in overall quality: ", round(effect, 2), "% increase in price\n", sep="")
+}
+
+# Year.Built
+if("Year.Built" %in% names(coef(final_model_rq1))) {
+  coef_val <- coef(final_model_rq1)["Year.Built"]
+  effect <- (exp(coef_val * 10) - 1) * 100
+  cat("- 10 years newer home: ", round(effect, 2), "% increase in price\n", sep="")
+}
+
+# Garage.Cars
+if("Garage.Cars" %in% names(coef(final_model_rq1))) {
+  coef_val <- coef(final_model_rq1)["Garage.Cars"]
+  effect <- (exp(coef_val) - 1) * 100
+  cat("- 1 additional car garage capacity: ", round(effect, 2), "% increase in price\n", sep="")
+}
+
+# Total.Bsmt.SF
+if("Total.Bsmt.SF" %in% names(coef(final_model_rq1))) {
+  coef_val <- coef(final_model_rq1)["Total.Bsmt.SF"]
+  effect <- (exp(coef_val * 100) - 1) * 100
+  cat("- 100 sq ft increase in basement area: ", round(effect, 2), "% increase in price\n", sep="")
+}
+```
+
+```{r interaction_effect_interpretation}
+# Extract coefficients from interaction model
+coef_main <- coef(interaction_model)["Gr.Liv.Area"]
+coef_int <- coef(interaction_model)["Gr.Liv.Area:Overall.Qual"]
+
+# Calculate effect of 100 sq ft increase at different quality levels
+quality_levels <- c(3, 5, 7, 9)  # Low, medium-low, medium-high, high
+
+cat("\nEffect of 100 sq ft increase in living area by quality level:\n\n")
+for (qual in quality_levels) {
+  total_effect <- coef_main + coef_int * qual
+  percent_change <- (exp(total_effect * 100) - 1) * 100  # Effect of 100 sq ft
+  cat("- Quality level ", qual, ": ", round(percent_change, 2), "% increase in price\n", sep="")
+}
+```
+
+# 4. Results and Conclusions
+
+## Summary of Findings
+
+Our analysis revealed several important insights about the Ames housing market:
+
+1. **Most important factors**: The most significant predictors of home sale prices are:
+   - Living area (Gr.Liv.Area)
+   - Overall quality rating (Overall.Qual)
+   - Garage capacity (Garage.Cars)
+   - Basement size (Total.Bsmt.SF)
+   - Year built (Year.Built)
+   - Neighborhood location
+   - Kitchen quality
+
+2. **Magnitude of effects**: 
+   - A 100 sq ft increase in living area is associated with approximately a 2.26% increase in price
+   - Each 1-point increase in overall quality rating (on a 1-10 scale) is associated with about a 9.47% increase in price
+   - An additional car garage capacity increases price by about 6.18%
+   - Newer homes (10 years newer) sell for approximately 1.54% more
+   - Premium neighborhoods like GrnHill and ClearCr can command over 20% higher prices
+
+3. **Interaction effect**: The interaction between living area and overall quality is statistically significant. Interestingly, the percentage effect of additional square footage is actually stronger in lower-quality homes. This suggests that in lower-quality homes, increasing square footage may have a proportionally larger impact on value.
+
+## Limitations
+
+Our analysis has several limitations:
+
+1. **Temporal limitations**: The data is from a specific time period and may not reflect current market conditions or long-term trends.
+
+2. **Geographic specificity**: Our model is specific to Ames, Iowa, and may not generalize well to other housing markets with different dynamics.
+
+3. **Omitted variables**: There may be important factors affecting home prices that weren't included in our model, such as school districts, proximity to amenities, or lot characteristics.
+
+4. **Model assumptions**: While the log transformation helped address right-skewness, there are still some minor deviations from normality in the residuals as shown in our diagnostic plots.
+
+5. **Interaction complexity**: We only tested one interaction (living area × quality), but other important interactions may exist.
+
+## Recommendations
+
+Based on our findings, we offer the following recommendations:
+
+1. **For homeowners considering renovations**:
+   - Focus on improving overall quality ratings, particularly kitchen quality
+   - Consider expanding living area, as this significantly impacts home value
+   - Garage expansions can be a worthwhile investment
+
+2. **For homebuyers**:
+   - Consider the substantial neighborhood effect on price
+   - Evaluate the tradeoff between home quality and size
+   - Use our model to estimate fair market value for potential purchases
+
+3. **For real estate professionals**:
+   - Use the percentage effects from our model to better advise clients
+   - Consider location-specific pricing strategies
+   - Account for the interaction between quality and size when valuing properties
+
+4. **For future research**:
+   - Explore additional interaction effects
+   - Incorporate more neighborhood-level variables
+   - Consider non-linear relationships for certain predictors
+
+Our analysis has successfully answered our research questions, identifying the most important factors affecting home prices in Ames and confirming that there is indeed an interaction effect between living area and home quality. This model could serve as a valuable tool for real estate valuation and decision-making in the Ames market.
