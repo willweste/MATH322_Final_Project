@@ -2,7 +2,9 @@
 title: "MATH 322: Applied Linear Regression - Final Project"
 author: "Group Members: Jack Brown, Keegan Croft, Patrick Hayden, William Westerkamp"
 date: "May 11, 2025"
-output: html_document
+output: 
+  pdf_document:
+    latex_engine: xelatex
 ---
 
 ```{r setup, include=FALSE}
@@ -17,11 +19,10 @@ As stated in our existing project report:
 
 The primary objective of this project is to conduct a multiple linear regression analysis on residential housing data from Ames, Iowa, to identify the most significant predictors of home sale prices. We will develop a statistically sound model for predicting sale prices and gain insight into economic and structural factors determining home valuation in the Midwest U.S. housing market. Our analysis has been guided by two research questions:
 
-1. **What are the most important factors that influence the sale price of a home in Ames?**
-   - In this part of the study, we identify the strongest predictors among a selection of numerical, ordinal, and categorical variables, such as living area, neighborhood, overall quality, and kitchen quality. By estimating the effect size and statistical significance of each predictor, we aim to construct a parsimonious model that evenly balances interpretability and predictive power.
-
-2. **Does the effect of living area on sale price vary depending on the perceived quality of the home?**
-   - Here, we explore the interaction effect between living area (Gr_Liv_Area) and overall quality (Overall_Qual). This will allow us to determine whether additional square footage adds more value in higher-quality homes compared to lower-quality ones. The question we posed allows us to test whether the marginal effect of one variable depends on another.
+1.  **What are the most important factors that influence the sale price of a home in Ames?**
+    -   In this part of the study, we identify the strongest predictors among a selection of numerical, ordinal, and categorical variables, such as living area, neighborhood, overall quality, and kitchen quality. By estimating the effect size and statistical significance of each predictor, we aim to construct a parsimonious model that evenly balances interpretability and predictive power.
+2.  **Does the effect of living area on sale price vary depending on the perceived quality of the home?**
+    -   Here, we explore the interaction effect between living area (Gr_Liv_Area) and overall quality (Overall_Qual). This will allow us to determine whether additional square footage adds more value in higher-quality homes compared to lower-quality ones. The question we posed allows us to test whether the marginal effect of one variable depends on another.
 
 ## Modeling Objectives
 
@@ -200,15 +201,15 @@ no_interaction_model <- lm(log(SalePrice) ~ Gr.Liv.Area + Overall.Qual,
 anova(no_interaction_model, interaction_model)
 ```
 
-The summary output from the interaction model has an adjusted R^2 value of 0.7594 which shows that our model is a decent fit for around 75% of the data. 
+The summary output from the interaction model has an adjusted R\^2 value of 0.7594 which shows that our model is a decent fit for around 75% of the data.
 
 A hypothesis test was performed to see if the interaction between Overall.Qual and Gr.Liv.Area was zero, and the conclusion found from it was that there was significant evidence to reject the null hypothesis and that the interaction between the variables is significant to the model. This was determined because the p-value from the ANOVA test was very small, allowing us to be confident to at least 5% that the interaction is significant.
 
-**Hypothesis test:**  
-H₀: β₃ = 0 vs. H₁: β₃ ≠ 0  
-F = 36.575  
-p-value ≈ 0  
-Decision: p-value < 0.05. We reject the null hypothesis at a 5% level of significance.  
+**Hypothesis test:**\
+H₀: β₃ = 0 vs. H₁: β₃ ≠ 0\
+F = 36.575\
+p-value ≈ 0\
+Decision: p-value \< 0.05. We reject the null hypothesis at a 5% level of significance.\
 Conclusion: We have significant evidence that the interaction is significant to the model.
 
 All of this allows us to conclude that the combination of the overall quality of a house and how much square footage is available has a significant effect on the overall sale price of the house.
@@ -292,62 +293,57 @@ for (qual in quality_levels) {
 
 ## Summary of Findings
 
-Our analysis revealed several important insights about the Ames housing market:
+Our analysis revealed several important points about the Ames housing market:
 
-1. **Most important factors**: The most significant predictors of home sale prices are:
-   - Living area (Gr.Liv.Area)
-   - Overall quality rating (Overall.Qual)
-   - Garage capacity (Garage.Cars)
-   - Basement size (Total.Bsmt.SF)
-   - Year built (Year.Built)
-   - Neighborhood location
-   - Kitchen quality
-
-2. **Magnitude of effects**: 
-   - A 100 sq ft increase in living area is associated with approximately a 2.26% increase in price
-   - Each 1-point increase in overall quality rating (on a 1-10 scale) is associated with about a 9.47% increase in price
-   - An additional car garage capacity increases price by about 6.18%
-   - Newer homes (10 years newer) sell for approximately 1.54% more
-   - Premium neighborhoods like GrnHill and ClearCr can command over 20% higher prices
-
-3. **Interaction effect**: The interaction between living area and overall quality is statistically significant. Interestingly, the percentage effect of additional square footage is actually stronger in lower-quality homes. This suggests that in lower-quality homes, increasing square footage may have a proportionally larger impact on value.
+1.  **Most important factors**: The most significant predictors of home sale prices:
+    -   Living area (Gr.Liv.Area)
+    -   Overall quality rating (Overall.Qual)
+    -   Garage capacity (Garage.Cars)
+    -   Basement size (Total.Bsmt.SF)
+    -   Year built (Year.Built)
+    -   Neighborhood location
+    -   Kitchen quality
+2.  **Magnitude of effects**:
+    -   A price rise of about 2.26% corresponds to a 100 square foot increase in living space
+    -   On a scale of 1 to 10, every point increase in the overall quality rating corresponds to a price increase of roughly 9.47%.
+    -   Prices rise by roughly 6.18% for every increase in car garage capacity
+    -   Homes that are ten years or younger sell for about 1.54% more
+    -   GrnHill and ClearCr, two upscale neighborhoods, can get prices that are more than 20% higher
+3.  **Interaction effect**: There is a statistically significant relationship between living area and overall quality. It's interesting to note that lower-quality homes actually have a larger percentage effect from more square footage. This implies that adding square footage may have a correspondingly greater effect on value in homes of inferior quality.
 
 ## Limitations
 
 Our analysis has several limitations:
 
-1. **Temporal limitations**: The data is from a specific time period and may not reflect current market conditions or long-term trends.
+1.  **Temporal limitations**: Because the data is from a certain time period, it could not accurately represent long-term patterns or current market conditions.
 
-2. **Geographic specificity**: Our model is specific to Ames, Iowa, and may not generalize well to other housing markets with different dynamics.
+2.  **Geographic specificity**: Our approach is unique to Ames, Iowa, and might not translate well to other housing markets with distinct dynamics.
 
-3. **Omitted variables**: There may be important factors affecting home prices that weren't included in our model, such as school districts, proximity to amenities, or lot characteristics.
+3.  **Omitted variables**: Our model may have overlooked significant elements that influence property prices, such as lot features, school districts, or accessibility to amenities.
 
-4. **Model assumptions**: While the log transformation helped address right-skewness, there are still some minor deviations from normality in the residuals as shown in our diagnostic plots.
+4.  **Model assumptions**: Our diagnostic plots reveal that, despite the log transformation's assistance in mitigating right-skewness, the residuals still exhibit a few small departures from normality.
 
-5. **Interaction complexity**: We only tested one interaction (living area × quality), but other important interactions may exist.
+5.  **Interaction complexity**: There may be more significant interactions, but we only examined one (living area × quality).
 
 ## Recommendations
 
 Based on our findings, we offer the following recommendations:
 
-1. **For homeowners considering renovations**:
-   - Focus on improving overall quality ratings, particularly kitchen quality
-   - Consider expanding living area, as this significantly impacts home value
-   - Garage expansions can be a worthwhile investment
+1.  **For homeowners considering renovations**:
+    - Give priority to raising overall quality ratings, especially those for the kitchen 
+    - Take into account increasing living space, as this has a big effect on home value.
+    - Extending a garage might be a wise financial decision.
+2.  **For homebuyers**:
+    - Contemplate the significant neighborhood impact on pricing 
+    - Assess the trade-off between size and quality of a property 
+    - Compute the fair market value of possible acquisitions using our model
+3.  **For real estate professionals**:
+    -   Utilize our model's percentage effects to provide clients with more insightful advice
+    -   Think about location-specific pricing tactics
+    -   When evaluating properties, take into consideration how size and quality interact
+4.  **For future research**:
+    -   Explore other interaction effects
+    -   Increase the number of neighborhood-level variables.
+    -   Examine non-linear correlations for specific predictors
 
-2. **For homebuyers**:
-   - Consider the substantial neighborhood effect on price
-   - Evaluate the tradeoff between home quality and size
-   - Use our model to estimate fair market value for potential purchases
-
-3. **For real estate professionals**:
-   - Use the percentage effects from our model to better advise clients
-   - Consider location-specific pricing strategies
-   - Account for the interaction between quality and size when valuing properties
-
-4. **For future research**:
-   - Explore additional interaction effects
-   - Incorporate more neighborhood-level variables
-   - Consider non-linear relationships for certain predictors
-
-Our analysis has successfully answered our research questions, identifying the most important factors affecting home prices in Ames and confirming that there is indeed an interaction effect between living area and home quality. This model could serve as a valuable tool for real estate valuation and decision-making in the Ames market.
+By determining the primary determinants of Ames home prices and verifying that there is, in fact, an interaction effect between living area and home quality, our analysis has effectively addressed our research questions. In the Ames market, this model might be a useful instrument for valuing and making decisions about real estate.
